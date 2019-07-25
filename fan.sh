@@ -36,7 +36,15 @@ _round() {
 }
 
 _max() {
-    if [ "$(echo "$1" / 1 | bc)" -gt "$(echo "$2" / 1 | bc)" ]; then
+    if [ "$(_round "$1")" -gt "$(_round "$2")" ]; then
+        echo "$1"
+    else
+        echo "$2"
+    fi
+}
+
+_min() {
+    if [ "$(_round "$1")" -lt "$(_round "$2")" ]; then
         echo "$1"
     else
         echo "$2"
@@ -74,7 +82,7 @@ do
     if [ "$delta" -lt 0 ] && [ "$actualTemp" -gt "$T_MIN" ] && [ "$actualTemp" -lt "$T_MAX" ]; then
         step="$(echo "($T_MAX - $actualTemp) * ($T_MAX - $actualTemp + 1) / 2" | bc -l)"
         echo "Stepping down"
-        _set_fan_speed "$(_max "$actualFan" "$(echo "$FAN_MAX - $step * $STEP_DOWN" | bc)" )"
+        _set_fan_speed "$(_min "$actualFan" "$(echo "$FAN_MAX - $step * $STEP_DOWN" | bc)" )"
     fi
 
     echo "Temp: $actualTemp, Fan speed: $actualFan, Delta: $delta"
