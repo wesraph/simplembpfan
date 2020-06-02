@@ -1,5 +1,7 @@
 #!/bin/sh
 
+DEBUG=0
+
 TEMP="/sys/devices/platform/applesmc.768/"
 FAN="/sys/devices/platform/applesmc.768/fan1"
 
@@ -16,6 +18,12 @@ STEP_UP="$(echo "($FAN_MAX - $FAN_MIN) / (($T_MAX - $T_HIGH) * ($T_MAX - $T_HIGH
 
 STEP_DOWN="$(echo "($FAN_MAX - $FAN_MIN) / (($T_MAX - $T_MIN) * ($T_MAX - $T_MIN + 1) / 2)" | bc -l)"
 
+_debug() {
+	if [ "$DEBUG" -eq "1" ]; then
+		echo "$1"
+	fi
+}
+
 _get_max_temp() {
     echo "$(cat $TEMP/temp*_input | grep -v "-" | sort -r | head -n 1)" / 1000 | bc
 }
@@ -28,7 +36,6 @@ _set_fan_speed() {
     if [ "$DRY_RUN" = 0 ]; then
         _round "$1" > "$FAN"_output
     fi
-    echo "Setting fan speed to $1" 1>&2
 }
 
 _round() {
@@ -51,7 +58,7 @@ _min() {
     fi
 }
 
-echo "Setting fan in manual mode"
+_debug "Setting fan in manual mode"
 echo 1 > "$FAN"_manual
 
 oldTemp="$(_get_max_temp)"
@@ -62,12 +69,12 @@ do
     actualFan="$(_get_fan_speed)"
 
     if [ "$actualTemp" -ge "$T_MAX" ] && [ "$actualFan" -lt "$FAN_MAX" ]; then
-        echo "Setting max speed"
+        _debug "Setting max speed"
         _set_fan_speed "$FAN_MAX"
     fi
 
     if [ "$actualTemp" -le "$T_MIN" ] && [ "$actualFan" != "$FAN_MIN" ]; then
-        echo "Setting min speed"
+        _debug "Setting min speed"
         _set_fan_speed "$FAN_MIN"
     fi
 
@@ -75,7 +82,7 @@ do
 
     if [ "$delta" -gt 0 ] && [ "$actualTemp" -gt "$T_HIGH" ] && [ "$actualTemp" -lt "$T_MAX" ]; then
         step="$(echo "($actualTemp - $T_HIGH) * ($actualTemp - $T_HIGH + 1) / 2" | bc -l)"
-        echo "Stepping up"
+        _debug "Stepping up"
         _set_fan_speed "$(_max "$actualFan" "$(echo "$FAN_MIN + $step * $STEP_UP" | bc)" )"
     fi
 
@@ -85,7 +92,7 @@ do
         _set_fan_speed "$(_min "$actualFan" "$(echo "$FAN_MAX - $step * $STEP_DOWN" | bc)" )"
     fi
 
-    echo "Temp: $actualTemp, Fan speed: $actualFan, Delta: $delta"
+    _debug "Temp: $actualTemp, Fan speed: $actualFan, Delta: $delta"
 
     oldTemp="$actualTemp"
 
