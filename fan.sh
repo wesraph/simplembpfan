@@ -24,6 +24,29 @@ _debug() {
 	fi
 }
 
+# Check if the cpu is not overheating and set fan speed to max if true
+_cpu_overheat(){
+    f="$(grep MHz /proc/cpuinfo | awk '{print $4}' | head -n1)"
+	if [ "$(echo "$f < 501" | bc -l)" -eq "0" ]; then
+		return
+	fi
+
+	_debug "CPU is overheating, setting fan to max speed"
+	notify-send "CPU" "CPU overheating detected"
+
+	_set_fan_speed "$FAN_MAX"
+
+	while true; do
+		f="$(grep MHz /proc/cpuinfo | awk '{print $4}' | head -n1)"
+		if [ "$(echo "$f > 1000" | bc -l)" -eq "1" ]; then
+			_debug "Back to normal"
+			break
+		fi
+
+		sleep 1
+	done
+}
+
 _get_max_temp() {
     echo "$(cat $TEMP/temp*_input | grep -v "-" | sort -r | head -n 1)" / 1000 | bc
 }
